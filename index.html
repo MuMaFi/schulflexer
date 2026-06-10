@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SchulFlexer – IGS Niedersachsen</title>
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Firebase SDK (Google Sign-In) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  // ─────────────────────────────────────────────────────────────────
+  // IMPORTANT: Replace with your own Firebase project config at
+  // https://console.firebase.google.com → Project Settings → Web app
+  // ─────────────────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyAdO5BifDj_XOlAHYgzsUqCpSD2pw9VSFc",
+    authDomain: "lernapp-7fdfb.firebaseapp.com",
+    projectId: "lernapp-7fdfb",
+    storageBucket: "lernapp-7fdfb.firebasestorage.app",
+    messagingSenderId: "263623770839",
+    appId: "1:263623770839:web:a6083893289b7ff6b06692"
+  };
+
+  let app, auth, db;
+  try {
+    app  = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db   = getFirestore(app);
+  } catch(e) {
+    console.warn('Firebase init skipped – using localStorage fallback.', e);
+  }
+
+  window._firebase = { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc };
+</script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   iOS 26 LIQUID GLASS DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* iOS 26 palette */
+  --blue:     #007aff;
+  --purple:   #5856d6;
+  --teal:     #32ade6;
+  --green:    #34c759;
+  --red:      #ff3b30;
+  --orange:   #ff9f0a;
+  --pink:     #ff2d55;
+  --indigo:   #5e5ce6;
+  --text:     #1c1c1e;
+  --text2:    #3a3a3c;
+  --muted:    #8e8e93;
+  --bg:       #f2f2f7;
+
+  /* Liquid Glass tokens */
+  --glass-light:  rgba(255,255,255,0.72);
+  --glass-mid:    rgba(255,255,255,0.52);
+  --glass-dark:   rgba(255,255,255,0.32);
+  --glass-border: rgba(255,255,255,0.9);
+  --glass-border2:rgba(255,255,255,0.55);
+  --blur-lg:  blur(32px) saturate(200%) brightness(1.05);
+  --blur-md:  blur(20px) saturate(180%);
+  --blur-sm:  blur(12px) saturate(160%);
+  --shadow:   0 8px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+  --shadow-lg:0 16px 48px rgba(0,0,0,0.13), 0 1px 0 rgba(255,255,255,0.9) inset;
+  --r-xl:  28px;
+  --r-lg:  20px;
+  --r-md:  16px;
+  --r-sm:  12px;
+  --r-xs:   8px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── ANIMATED MESH BACKGROUND ─── */
+.mesh {
+  position: fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 90% 70% at 15% 8%,  rgba(120,100,255,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 82% 18%, rgba(0,170,255,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 65% at 50% 88%, rgba(52,199,89,0.13) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 88% 72%, rgba(255,159,10,0.12) 0%, transparent 52%),
+    radial-gradient(ellipse 60% 50% at 10% 70%, rgba(255,45,85,0.09) 0%, transparent 50%),
+    #f2f2f7;
+  animation: meshDrift 16s ease-in-out infinite alternate;
+}
+@keyframes meshDrift {
+  0%   { opacity:1; }
+  50%  { opacity:0.85; }
+  100% { opacity:1; }
+}
+
+/* ─── SCREENS ─── */
+.screen { display:none; position:relative; z-index:1; }
+.screen.active { display:block; }
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN SCREEN
+   ═══════════════════════════════════════════════════════ */
+#screen-login {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+#screen-login.active { display:flex; }
+
+.login-card {
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 44px 36px 40px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+.login-logo {
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  border-radius: 22px;
+  display: flex; align-items:center; justify-content:center;
+  font-size: 2.2rem;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 24px rgba(88,86,214,0.4), 0 1px 0 rgba(255,255,255,0.5) inset;
+}
+.login-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1.1;
+}
+.login-title span {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.login-sub {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-top: 8px;
+  margin-bottom: 36px;
+  line-height: 1.5;
+}
+.btn-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #fff;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  border-radius: var(--r-md);
+  padding: 15px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  letter-spacing: -0.01em;
+}
+.btn-google:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-1px); }
+.btn-google:active { transform: scale(0.99); }
+.btn-google svg { flex-shrink:0; }
+.login-divider {
+  display: flex; align-items:center; gap:12px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.login-divider::before,.login-divider::after {
+  content:''; flex:1; height:1px; background:rgba(0,0,0,0.1);
+}
+.btn-guest {
+  width: 100%;
+  background: rgba(0,0,0,0.05);
+  border: 1.5px solid rgba(0,0,0,0.08);
+  border-radius: var(--r-md);
+  padding: 14px 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-guest:hover { background:rgba(0,0,0,0.09); }
+.login-note {
+  margin-top: 20px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN APP LAYOUT
+   ═══════════════════════════════════════════════════════ */
+#screen-app {
+  min-height: 100vh;
+  padding-bottom: calc(88px + var(--safe-b));
+}
+
+/* ─── TOP NAV BAR ─── */
+.topbar {
+  position: sticky; top:0; z-index:100;
+  padding: env(safe-area-inset-top, 0px) 20px 0;
+  background: rgba(242,242,247,0.72);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border-bottom: 1px solid rgba(255,255,255,0.6);
+}
+.topbar-inner {
+  display: flex; align-items:center; justify-content:space-between;
+  padding: 14px 0;
+  max-width: 860px; margin: 0 auto;
+}
+.topbar-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.topbar-title span {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.avatar-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border2);
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items:center; justify-content:center;
+  overflow: hidden;
+  transition: transform 0.15s;
+  box-shadow: 0 2px 8px rgba(88,86,214,0.3);
+}
+.avatar-btn:hover { transform: scale(1.05); }
+.avatar-btn img { width:100%; height:100%; object-fit:cover; }
+
+/* ─── CONTENT WRAPPER ─── */
+.app-content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+/* ─── PAGE VIEWS inside app ─── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ═══════════════════════════════════════════════════════
+   BOTTOM TAB BAR – iOS 26 style
+   ═══════════════════════════════════════════════════════ */
+.tab-bar {
+  position: fixed;
+  bottom: 0; left:0; right:0;
+  z-index: 200;
+  padding: 0 12px;
+  padding-bottom: var(--safe-b);
+}
+.tab-bar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 26px 26px 22px 22px;
+  box-shadow: var(--shadow-lg), 0 -1px 0 rgba(255,255,255,0.8) inset;
+  display: flex;
+  padding: 8px 6px 10px;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 18px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+}
+.tab-btn.active {
+  background: rgba(0,122,255,0.12);
+}
+.tab-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+.tab-btn.active .tab-icon { transform: scale(1.15) translateY(-1px); }
+.tab-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.tab-btn.active .tab-label { color: var(--blue); }
+
+/* ═══════════════════════════════════════════════════════
+   GLASS CARD BASE
+   ═══════════════════════════════════════════════════════ */
+.glass-card {
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+.glass-card-mid {
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border: 1.5px solid var(--glass-border2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PAGE: ÜBERSICHT (Home)
+   ═══════════════════════════════════════════════════════ */
+.page-section { margin-bottom: 20px; }
+.section-heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  padding: 0 4px;
+  margin-bottom: 10px;
+}
+
+/* Hero greeting */
+.hero-card {
+  padding: 22px 24px 20px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, rgba(0,122,255,0.85) 0%, rgba(88,86,214,0.85) 100%);
+  border-radius: var(--r-xl);
+  box-shadow: 0 12px 40px rgba(88,86,214,0.35), 0 1px 0 rgba(255,255,255,0.3) inset;
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content:'';
+  position: absolute; top:-40%; right:-10%;
+  width:180px; height:180px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero-greeting {
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0.8;
+  letter-spacing: 0.01em;
+}
+.hero-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-top: 3px;
+  line-height: 1.15;
+}
+.hero-subtitle {
+  font-size: 0.82rem;
+  opacity: 0.72;
+  margin-top: 6px;
+}
+.hero-stats {
+  display: flex; gap: 16px; margin-top: 18px;
+}
+.hero-stat {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 14px;
+  padding: 10px 16px;
+  flex: 1;
+  text-align: center;
+}
+.hero-stat-val { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.04em; }
+.hero-stat-lbl { font-size: 0.62rem; font-weight: 600; opacity: 0.72; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Star bar */
+.star-bar { padding: 18px 22px; display:flex; align-items:center; gap:16px; }
+.star-orb {
+  width:52px; height:52px;
+  background: linear-gradient(135deg, #ffcc00, #ff9f0a);
+  border-radius: 50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem;
+  box-shadow: 0 4px 16px rgba(255,159,10,0.4), 0 1px 0 rgba(255,255,255,0.5) inset;
+  flex-shrink:0;
+}
+.star-info { flex:1; }
+.star-number { font-size:2rem; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+.star-sub { font-size:0.78rem; color:var(--muted); font-weight:500; margin-top:2px; }
+.rank-pill {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color:#fff; font-size:0.72rem; font-weight:700;
+  padding:5px 12px; border-radius:99px;
+  letter-spacing:0.02em; white-space:nowrap;
+  box-shadow: 0 2px 8px rgba(88,86,214,0.35);
+}
+.progress-wrap { padding:0 22px 18px; }
+.progress-meta {
+  display:flex; justify-content:space-between;
+  font-size:0.75rem; font-weight:600; color:var(--muted);
+  margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;
+}
+.progress-track { height:5px; background:rgba(0,0,0,0.07); border-radius:99px; position:relative; }
+.progress-fill {
+  height:100%; border-radius:99px;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+  transition: width 0.7s cubic-bezier(.34,1.56,.64,1);
+  position:relative;
+}
+.progress-fill::after {
+  content:''; position:absolute; right:-1px; top:50%; transform:translateY(-50%);
+  width:11px; height:11px; background:#fff;
+  border:2px solid var(--purple); border-radius:50%;
+  box-shadow: 0 2px 6px rgba(88,86,214,0.3);
+}
+
+/* Recent activity quick cards */
+.quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quick-card {
+  padding: 18px 16px;
+  border-radius: var(--r-lg);
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1.5px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.quick-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.quick-card:active { transform:scale(0.98); }
+.quick-icon { font-size:1.6rem; margin-bottom:10px; }
+.quick-label { font-size:0.8rem; font-weight:700; color:var(--text); letter-spacing:-0.01em; }
+.quick-sub { font-size:0.7rem; color:var(--muted); margin-top:3px; }
+
+/* ═══════════════════════════════════════════════════════
+   PAGE: LERNEN (Fächer)
+   ═══════════════════════════════════════════════════════ */
+/* Segmented control */
+.seg-control {
+  display:flex; background:rgba(0,0,0,0.06);
+  border-radius:var(--r-sm); padding:3px; gap:2px;
+}
+.seg-btn {
+  flex:1; padding:9px 6px; border:none;
+  background:transparent; border-radius:10px;
+  font-size:0.85rem; font-weight:600; color:var(--muted);
+  cursor:pointer; transition:all 0.2s; font-family:inherit;
+  letter-spacing:-0.01em;
+}
+.seg-btn.active {
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.9) inset;
+}
+
+/* Fach pills */
+.fach-pills { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+.fach-pill {
+  flex:1; min-width:80px; padding:12px 10px;
+  border: 1.5px solid var(--glass-border2);
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow);
+  cursor:pointer; transition:all 0.2s;
+  text-align:center; font-family:inherit;
+  font-size:0.82rem; font-weight:600; color:var(--muted);
+  letter-spacing:-0.01em;
+}
+.fach-pill.active[data-fach="mathe"]   { background:rgba(0,122,255,0.12); border-color:rgba(0,122,255,0.35); color:var(--blue); }
+.fach-pill.active[data-fach="englisch"]{ background:rgba(50,173,230,0.12); border-color:rgba(50,173,230,0.35); color:var(--teal); }
+.fach-pill.active[data-fach="deutsch"] { background:rgba(88,86,214,0.12); border-color:rgba(88,86,214,0.35); color:var(--purple); }
+
+/* Thema cards */
+.themen-list { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.thema-card {
+  padding:18px 20px; cursor:pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  position:relative; overflow:hidden;
+}
+.thema-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.thema-card:active { transform:scale(0.99); }
+.thema-card::before {
+  content:''; position:absolute; left:0; top:16px; bottom:16px;
+  width:3px; border-radius:99px;
+  background:var(--fach-color, var(--blue)); opacity:0.7;
+}
+.thema-card.done::before { background:var(--green); opacity:1; }
+.thema-card-inner { padding-left:14px; }
+.thema-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.thema-title { font-size:0.95rem; font-weight:700; color:var(--text); letter-spacing:-0.02em; line-height:1.3; }
+.thema-card.done .thema-title { color:var(--text2); }
+.thema-stars-row { display:flex; gap:2px; flex-shrink:0; opacity:0.35; font-size:0.8rem; }
+.thema-card.done .thema-stars-row { opacity:1; }
+.thema-sub { font-size:0.76rem; color:var(--muted); margin-top:4px; line-height:1.5; }
+.thema-footer { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+.solve-btn {
+  background:var(--fach-color, var(--blue)); color:#fff; border:none;
+  border-radius:var(--r-xs); padding:7px 16px;
+  font-size:0.78rem; font-weight:600; cursor:pointer; font-family:inherit;
+  letter-spacing:-0.01em; transition:filter 0.15s, transform 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.solve-btn:hover { filter:brightness(1.1); transform:scale(1.03); }
+.done-label { font-size:0.76rem; color:var(--green); font-weight:600; display:none; }
+.thema-card.done .solve-btn { display:none; }
+.thema-card.done .done-label { display:block; }
+.thema-points { font-size:0.72rem; color:var(--muted); font-weight:500; }
+.thema-card.done .thema-points { color:var(--green); font-weight:600; }
+
+/* ═══════════════════════════════════════════════════════
+   PAGE: AUFGABEN
+   ═══════════════════════════════════════════════════════ */
+.aufgaben-header { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.filter-chip {
+  padding:7px 14px;
+  border-radius:99px;
+  border: 1.5px solid var(--glass-border2);
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  font-size:0.78rem; font-weight:600; color:var(--muted);
+  cursor:pointer; transition:all 0.2s; font-family:inherit;
+}
+.filter-chip.active { background:rgba(0,122,255,0.15); border-color:rgba(0,122,255,0.4); color:var(--blue); }
+.aufgabe-card {
+  padding:18px 20px;
+  margin-bottom:10px;
+  position:relative;
+  cursor:pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.aufgabe-card:hover { transform:translateY(-1px); box-shadow:var(--shadow-lg); }
+.aufgabe-header-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.aufgabe-title { font-size:0.92rem; font-weight:700; color:var(--text); letter-spacing:-0.02em; line-height:1.3; }
+.aufgabe-badge {
+  padding:3px 10px; border-radius:99px;
+  font-size:0.65rem; font-weight:700; letter-spacing:0.03em;
+  white-space:nowrap; flex-shrink:0;
+}
+.badge-mathe    { background:rgba(0,122,255,0.15); color:var(--blue); }
+.badge-englisch { background:rgba(50,173,230,0.15); color:var(--teal); }
+.badge-deutsch  { background:rgba(88,86,214,0.15); color:var(--purple); }
+.aufgabe-desc { font-size:0.78rem; color:var(--muted); margin-top:6px; line-height:1.5; }
+.aufgabe-footer { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+.aufgabe-difficulty {
+  display:flex; align-items:center; gap:4px;
+  font-size:0.72rem; font-weight:600; color:var(--muted);
+}
+.diff-dot {
+  width:6px; height:6px; border-radius:50%;
+  background: rgba(0,0,0,0.15);
+}
+.diff-dot.filled { background:var(--orange); }
+.aufgabe-start-btn {
+  background:linear-gradient(135deg, var(--blue), var(--purple));
+  color:#fff; border:none; border-radius:var(--r-xs);
+  padding:7px 14px; font-size:0.76rem; font-weight:700;
+  cursor:pointer; font-family:inherit; letter-spacing:-0.01em;
+  box-shadow: 0 2px 8px rgba(88,86,214,0.3);
+  transition: filter 0.15s, transform 0.15s;
+}
+.aufgabe-start-btn:hover { filter:brightness(1.1); transform:scale(1.03); }
+.aufgabe-done-overlay {
+  position:absolute; inset:0; border-radius:inherit;
+  background:rgba(52,199,89,0.06);
+  pointer-events:none;
+}
+.aufgabe-done-badge {
+  display:flex; align-items:center; gap:6px;
+  font-size:0.78rem; font-weight:700; color:var(--green);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PAGE: PROFIL
+   ═══════════════════════════════════════════════════════ */
+.profile-avatar-wrap {
+  text-align:center; padding:28px 0 20px;
+}
+.profile-avatar {
+  width:88px; height:88px; border-radius:50%;
+  background:linear-gradient(135deg, var(--blue), var(--purple));
+  color:#fff; font-size:2.2rem; font-weight:800;
+  display:inline-flex; align-items:center; justify-content:center;
+  box-shadow: 0 8px 24px rgba(88,86,214,0.4);
+  overflow:hidden; border:3px solid rgba(255,255,255,0.8);
+}
+.profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-name { font-size:1.3rem; font-weight:800; letter-spacing:-0.03em; margin-top:12px; }
+.profile-email { font-size:0.82rem; color:var(--muted); font-weight:400; margin-top:4px; }
+
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.stat-card {
+  padding:16px 12px;
+  text-align:center;
+}
+.stat-val { font-size:1.6rem; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+.stat-lbl { font-size:0.65rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:4px; }
+
+.settings-list { display:flex; flex-direction:column; gap:0; overflow:hidden; border-radius:var(--r-lg); }
+.settings-row {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 18px; cursor:pointer;
+  background:var(--glass-light);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  transition: background 0.15s;
+}
+.settings-row:last-child { border-bottom:none; }
+.settings-row:hover { background:rgba(255,255,255,0.85); }
+.settings-icon {
+  width:32px; height:32px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.95rem; flex-shrink:0;
+}
+.settings-label { flex:1; font-size:0.88rem; font-weight:600; color:var(--text); }
+.settings-value { font-size:0.82rem; color:var(--muted); font-weight:400; }
+.settings-chevron { color:var(--muted); font-size:0.7rem; }
+
+/* Toggle switch */
+.toggle-wrap {
+  width:44px; height:26px; border-radius:13px;
+  background: var(--muted); position:relative;
+  cursor:pointer; transition: background 0.25s;
+  flex-shrink:0;
+}
+.toggle-wrap.on { background:var(--green); }
+.toggle-knob {
+  position:absolute; top:3px; left:3px;
+  width:20px; height:20px; border-radius:50%;
+  background:#fff;
+  box-shadow:0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+.toggle-wrap.on .toggle-knob { transform:translateX(18px); }
+
+/* Sign out btn */
+.btn-signout {
+  width:100%; margin-top:20px;
+  background:rgba(255,59,48,0.1);
+  border:1.5px solid rgba(255,59,48,0.25);
+  border-radius:var(--r-md);
+  padding:14px; color:var(--red);
+  font-size:0.92rem; font-weight:700;
+  cursor:pointer; font-family:inherit;
+  transition: all 0.18s;
+}
+.btn-signout:hover { background:rgba(255,59,48,0.18); }
+
+/* ═══════════════════════════════════════════════════════
+   TASK MODAL (bottom sheet)
+   ═══════════════════════════════════════════════════════ */
+.modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.35);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  z-index:300;
+  display:none; align-items:flex-end; justify-content:center;
+  padding-bottom: var(--safe-b);
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background: rgba(248,248,252,0.88);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1.5px solid var(--glass-border);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.16);
+  padding:14px 24px 36px;
+  width:100%; max-width:600px;
+  animation:sheetUp 0.35s cubic-bezier(.32,1,.28,1);
+  max-height:92vh; overflow-y:auto;
+}
+@keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-handle {
+  width:36px; height:4px;
+  background:rgba(0,0,0,0.15); border-radius:99px;
+  margin:0 auto 22px;
+}
+.modal-fach-badge {
+  display:inline-block;
+  padding:4px 12px; border-radius:99px;
+  font-size:0.68rem; font-weight:700; letter-spacing:0.03em;
+  margin-bottom:10px;
+}
+.modal h2 { font-size:1.3rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:6px; }
+.modal-desc { font-size:0.83rem; color:var(--muted); margin-bottom:20px; line-height:1.55; }
+.modal-tasks { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.task-item {
+  display:flex; align-items:center; gap:12px;
+  background:rgba(0,0,0,0.04); border-radius:var(--r-sm);
+  padding:13px 14px; cursor:pointer;
+  transition:background 0.15s; border:1.5px solid transparent;
+  user-select:none;
+}
+.task-item:hover { background:rgba(0,0,0,0.07); }
+.task-item.checked { background:rgba(52,199,89,0.1); border-color:rgba(52,199,89,0.3); }
+.task-cb {
+  width:22px; height:22px; border:2px solid rgba(0,0,0,0.18);
+  border-radius:7px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.15s; background:#fff;
+}
+.task-item.checked .task-cb { background:var(--green); border-color:var(--green); }
+.task-cb svg { display:none; }
+.task-item.checked .task-cb svg { display:block; }
+.task-text { font-size:0.88rem; font-weight:500; color:var(--text2); line-height:1.4; }
+.task-item.checked .task-text { color:var(--muted); text-decoration:line-through; }
+.modal-progress-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.modal-prog-track { flex:1; height:4px; background:rgba(0,0,0,0.08); border-radius:99px; overflow:hidden; }
+.modal-prog-fill { height:100%; background:linear-gradient(90deg,var(--green),#30d158); border-radius:99px; transition:width 0.3s; }
+.modal-prog-label { font-size:0.72rem; font-weight:700; color:var(--muted); white-space:nowrap; }
+.modal-actions { display:flex; gap:10px; }
+.btn-cancel {
+  flex:1; background:rgba(0,0,0,0.06); border:none; border-radius:var(--r-md);
+  padding:14px; font-size:0.9rem; font-weight:600; color:var(--muted);
+  cursor:pointer; font-family:inherit; transition:background 0.15s;
+}
+.btn-cancel:hover { background:rgba(0,0,0,0.1); color:var(--text); }
+.btn-confirm {
+  flex:2;
+  background:linear-gradient(135deg, var(--blue), var(--purple));
+  border:none; color:#fff; border-radius:var(--r-md);
+  padding:14px; font-size:0.92rem; font-weight:700;
+  cursor:pointer; font-family:inherit; letter-spacing:-0.01em;
+  opacity:0.45; pointer-events:none;
+  transition:opacity 0.2s, transform 0.15s;
+  box-shadow:0 4px 16px rgba(88,86,214,0.25);
+}
+.btn-confirm.ready { opacity:1; pointer-events:all; }
+.btn-confirm.ready:hover { filter:brightness(1.08); transform:scale(1.02); }
+
+/* ═══════════════════════════════════════════════════════
+   USER DROPDOWN
+   ═══════════════════════════════════════════════════════ */
+.user-dropdown {
+  position:fixed; top:72px; right:16px; z-index:500;
+  display:none;
+}
+.user-dropdown.show { display:block; }
+.user-dropdown-inner {
+  background:var(--glass-light);
+  backdrop-filter:var(--blur-lg);
+  -webkit-backdrop-filter:var(--blur-lg);
+  border:1.5px solid var(--glass-border);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-lg);
+  padding:8px; min-width:200px;
+  animation: dropIn 0.2s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes dropIn { from{transform:scale(0.9) translateY(-8px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+.dd-user-info { padding:10px 12px 12px; border-bottom:1px solid rgba(0,0,0,0.07); margin-bottom:6px; }
+.dd-name { font-size:0.88rem; font-weight:700; color:var(--text); }
+.dd-email { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+.dd-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:var(--r-xs);
+  cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--text);
+  transition:background 0.15s;
+}
+.dd-item:hover { background:rgba(0,0,0,0.06); }
+.dd-item.danger { color:var(--red); }
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════ */
+.toast {
+  position:fixed; top:20px; left:50%;
+  transform:translateX(-50%) translateY(-130px);
+  z-index:999;
+  background:var(--glass-light);
+  backdrop-filter:var(--blur-lg);
+  -webkit-backdrop-filter:var(--blur-lg);
+  border:1.5px solid var(--glass-border);
+  border-radius:var(--r-lg);
+  box-shadow:0 8px 32px rgba(0,0,0,0.14);
+  padding:14px 18px; min-width:260px; max-width:340px;
+  display:flex; align-items:center; gap:12px;
+  transition:transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+  opacity:0; pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.toast-icon {
+  width:36px; height:36px;
+  background:linear-gradient(135deg, var(--blue), var(--purple));
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:1rem; flex-shrink:0; color:#fff; font-weight:700;
+}
+.toast-body { flex:1; }
+.toast-title { font-size:0.82rem; font-weight:700; color:var(--text); }
+.toast-msg { font-size:0.75rem; color:var(--muted); margin-top:1px; }
+
+/* ─── BURST ─── */
+.burst-container { position:fixed; inset:0; pointer-events:none; z-index:998; }
+.burst-dot {
+  position:absolute; width:8px; height:8px; border-radius:50%;
+  background:var(--col);
+  animation:burstFly var(--d) cubic-bezier(.2,.6,.4,1) forwards;
+}
+@keyframes burstFly {
+  0%   { opacity:1; transform:translate(0,0) scale(1); }
+  100% { opacity:0; transform:translate(var(--tx),var(--ty)) scale(0); }
+}
+
+/* ─── FIREBASE SETUP BANNER ─── */
+.setup-banner {
+  background:rgba(255,159,10,0.12);
+  border:1.5px solid rgba(255,159,10,0.35);
+  border-radius:var(--r-md);
+  padding:12px 16px;
+  margin-bottom:14px;
+  font-size:0.78rem;
+  color:var(--text2);
+  line-height:1.5;
+}
+.setup-banner strong { color:var(--orange); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width:480px) {
+  .quick-grid { grid-template-columns:1fr 1fr; }
+  .stats-grid { grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat-val { font-size:1.3rem; }
+  .hero-stats { gap:8px; }
+}
+@media (max-width:360px) {
+  .fach-pills .fach-pill { font-size:0.74rem; padding:10px 6px; }
+}
+</style>
+</head>
+<body>
+<div class="mesh"></div>
+
+<!-- ═══════════════════ LOGIN SCREEN ═══════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">🎓</div>
+    <h1 class="login-title">Schul<span>Flexer</span></h1>
+    <p class="login-sub">IGS Niedersachsen &nbsp;·&nbsp; Klasse 9 & 10<br>Melde dich an, um deinen Fortschritt zu speichern.</p>
+
+    <div id="setup-banner" class="setup-banner" style="display:none">
+      <strong>⚙️ Firebase noch nicht eingerichtet.</strong> Ersetze die Platzhalter im Code mit deiner Firebase-Konfiguration, damit Google Sign-In funktioniert. Bis dahin kannst du als Gast weitermachen – dein Fortschritt wird lokal gespeichert.
+    </div>
+
+    <button class="btn-google" id="btnGoogleSignIn">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.2 6.6 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.2 6.6 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.3-7.2 2.3-5.2 0-9.6-3.4-11.2-8.1l-6.5 5C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.4 4.2-4.4 5.5l6.2 5.2C36.2 40.6 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+      Mit Google anmelden
+    </button>
+
+    <div class="login-divider">oder</div>
+
+    <button class="btn-guest" id="btnGuestLogin">Als Gast fortfahren</button>
+
+    <p class="login-note">Dein Fortschritt wird mit deinem Google-Konto synchronisiert und ist auf allen Geräten verfügbar.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════ MAIN APP ═══════════════════ -->
+<div id="screen-app" class="screen">
+
+  <!-- TOP NAV -->
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-title">Schul<span>Flexer</span></div>
+      <button class="avatar-btn" id="avatarBtn">?</button>
+    </div>
+  </nav>
+
+  <!-- USER DROPDOWN -->
+  <div class="user-dropdown" id="userDropdown">
+    <div class="user-dropdown-inner">
+      <div class="dd-user-info">
+        <div class="dd-name" id="ddName">Gast</div>
+        <div class="dd-email" id="ddEmail">Lokal gespeichert</div>
+      </div>
+      <div class="dd-item" onclick="switchTab('profil')">👤 Profil</div>
+      <div class="dd-item danger" onclick="signOutUser()">← Abmelden</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="app-content">
+
+    <!-- ── ÜBERSICHT PAGE ── -->
+    <div id="page-uebersicht" class="page active">
+      <div id="homeHeroCard" class="hero-card">
+        <div class="hero-greeting">Hallo 👋</div>
+        <div class="hero-name" id="heroName">Schüler</div>
+        <div class="hero-subtitle">Bereit für heute?</div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroStars">0</div>
+            <div class="hero-stat-lbl">⭐ Sterne</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroStreak">0</div>
+            <div class="hero-stat-lbl">🔥 Tage</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroPct">0%</div>
+            <div class="hero-stat-lbl">✅ Fertig</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-section">
+        <div class="glass-card star-bar">
+          <div class="star-orb">★</div>
+          <div class="star-info">
+            <div class="star-number" id="starCount">0</div>
+            <div class="star-sub">Sterne gesammelt</div>
+          </div>
+          <div class="rank-pill" id="rankPill">Anfänger</div>
+        </div>
+        <div class="glass-card" style="margin-top:10px">
+          <div class="progress-wrap">
+            <div class="progress-meta">
+              <span id="progLabel">Fortschritt</span>
+              <span id="progPct">0 %</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progFill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-section">
+        <div class="section-heading">Schnellzugriff</div>
+        <div class="quick-grid">
+          <div class="quick-card" onclick="switchTab('lernen')">
+            <div class="quick-icon">📚</div>
+            <div class="quick-label">Lernen</div>
+            <div class="quick-sub">Themen & Fächer</div>
+          </div>
+          <div class="quick-card" onclick="switchTab('aufgaben')">
+            <div class="quick-icon">✏️</div>
+            <div class="quick-label">Aufgaben</div>
+            <div class="quick-sub">Übungen lösen</div>
+          </div>
+          <div class="quick-card" onclick="switchTab('profil')">
+            <div class="quick-icon">🏆</div>
+            <div class="quick-label">Rangliste</div>
+            <div class="quick-sub">Dein Rang</div>
+          </div>
+          <div class="quick-card" id="reminderQuickCard" onclick="requestReminder()">
+            <div class="quick-icon">🔔</div>
+            <div class="quick-label">Erinnerung</div>
+            <div class="quick-sub" id="reminderQuickSub">Aktivieren</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LERNEN PAGE ── -->
+    <div id="page-lernen" class="page">
+      <div class="page-section">
+        <div class="seg-control" id="klasseControl">
+          <button class="seg-btn active" onclick="setKlasse(9)" id="btn9">Klasse 9</button>
+          <button class="seg-btn" onclick="setKlasse(10)" id="btn10">Klasse 10</button>
+        </div>
+        <div class="fach-pills">
+          <button class="fach-pill active" data-fach="mathe" onclick="setFach('mathe')">Mathematik</button>
+          <button class="fach-pill" data-fach="englisch" onclick="setFach('englisch')">Englisch</button>
+          <button class="fach-pill" data-fach="deutsch" onclick="setFach('deutsch')">Deutsch</button>
+        </div>
+      </div>
+      <div class="page-section">
+        <div class="section-heading" id="themenLabel">Themen</div>
+        <div class="themen-list" id="themenList"></div>
+      </div>
+    </div>
+
+    <!-- ── AUFGABEN PAGE ── -->
+    <div id="page-aufgaben" class="page">
+      <div class="page-section">
+        <div class="aufgaben-header">
+          <button class="filter-chip active" data-filter="alle" onclick="setAufgabenFilter('alle')">Alle</button>
+          <button class="filter-chip" data-filter="mathe" onclick="setAufgabenFilter('mathe')">Mathe</button>
+          <button class="filter-chip" data-filter="englisch" onclick="setAufgabenFilter('englisch')">Englisch</button>
+          <button class="filter-chip" data-filter="deutsch" onclick="setAufgabenFilter('deutsch')">Deutsch</button>
+          <button class="filter-chip" data-filter="offen" onclick="setAufgabenFilter('offen')">Offen</button>
+        </div>
+        <div id="aufgabenList"></div>
+      </div>
+    </div>
+
+    <!-- ── PROFIL PAGE ── -->
+    <div id="page-profil" class="page">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-name" id="profileName">Gast</div>
+        <div class="profile-email" id="profileEmail">Lokal gespeichert</div>
+      </div>
+
+      <div class="page-section">
+        <div class="section-heading">Statistiken</div>
+        <div class="stats-grid">
+          <div class="glass-card stat-card">
+            <div class="stat-val" id="statStars">0</div>
+            <div class="stat-lbl">⭐ Sterne</div>
+          </div>
+          <div class="glass-card stat-card">
+            <div class="stat-val" id="statDone">0</div>
+            <div class="stat-lbl">✅ Themen</div>
+          </div>
+          <div class="glass-card stat-card">
+            <div class="stat-val" id="statRank">—</div>
+            <div class="stat-lbl">🏅 Rang</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-section">
+        <div class="section-heading">Einstellungen</div>
+        <div class="settings-list glass-card" style="border-radius:var(--r-lg); overflow:hidden; padding:0; box-shadow:var(--shadow)">
+          <div class="settings-row" onclick="requestReminder()">
+            <div class="settings-icon" style="background:rgba(255,159,10,0.15)">🔔</div>
+            <div class="settings-label">Lern-Erinnerungen</div>
+            <div class="toggle-wrap" id="reminderToggle"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="settings-row" onclick="resetProgress()">
+            <div class="settings-icon" style="background:rgba(255,59,48,0.12)">🗑</div>
+            <div class="settings-label">Fortschritt zurücksetzen</div>
+            <span class="settings-chevron">›</span>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon" style="background:rgba(52,199,89,0.12)">📖</div>
+            <div class="settings-label">Lehrplan</div>
+            <div class="settings-value">IGS Niedersachsen</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon" style="background:rgba(0,122,255,0.12)">ℹ️</div>
+            <div class="settings-label">Version</div>
+            <div class="settings-value">3.0</div>
+          </div>
+        </div>
+        <button class="btn-signout" onclick="signOutUser()">← Abmelden</button>
+      </div>
+    </div>
+
+  </div><!-- /app-content -->
+
+  <!-- BOTTOM TAB BAR -->
+  <nav class="tab-bar">
+    <div class="tab-bar-inner">
+      <button class="tab-btn active" data-tab="uebersicht" onclick="switchTab('uebersicht')">
+        <span class="tab-icon">🏠</span>
+        <span class="tab-label">Übersicht</span>
+      </button>
+      <button class="tab-btn" data-tab="lernen" onclick="switchTab('lernen')">
+        <span class="tab-icon">📚</span>
+        <span class="tab-label">Lernen</span>
+      </button>
+      <button class="tab-btn" data-tab="aufgaben" onclick="switchTab('aufgaben')">
+        <span class="tab-icon">✏️</span>
+        <span class="tab-label">Aufgaben</span>
+      </button>
+      <button class="tab-btn" data-tab="profil" onclick="switchTab('profil')">
+        <span class="tab-icon">👤</span>
+        <span class="tab-label">Profil</span>
+      </button>
+    </div>
+  </nav>
+
+</div><!-- /screen-app -->
+
+<!-- ═══════════════════ TASK MODAL ═══════════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-fach-badge" id="modalFachBadge"></div>
+    <h2 id="modalTitle"></h2>
+    <p class="modal-desc" id="modalDesc"></p>
+    <div class="modal-progress-row">
+      <div class="modal-prog-track"><div class="modal-prog-fill" id="modalProgFill" style="width:0%"></div></div>
+      <div class="modal-prog-label" id="modalProgLabel">0 / 0</div>
+    </div>
+    <div class="modal-tasks" id="modalTasks"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-confirm" id="btnConfirm" onclick="confirmDone()">Thema abschließen ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toastIcon">★</div>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle"></div>
+    <div class="toast-msg" id="toastMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════ */
+const CURRICULUM = {
+  9: {
+    mathe: [
+      { id:'m9_1', title:'Lineare Gleichungssysteme', sub:'Grafisch & algebraisch lösen, Substitution, Additionsverfahren', sterne:3, tasks:['Gleichungssysteme grafisch darstellen','Additionsverfahren anwenden','Substitutionsverfahren anwenden','Textaufgaben lösen'] },
+      { id:'m9_2', title:'Quadratische Funktionen', sub:'Parabeln, Scheitelpunkt, Normalform und Scheitelpunktform', sterne:4, tasks:['Parabeln zeichnen und beschreiben','Scheitelpunkt bestimmen','Nullstellen berechnen','Normalform ↔ Scheitelpunktform umformen'] },
+      { id:'m9_3', title:'Quadratische Gleichungen', sub:'p-q-Formel, Diskriminante, Lösungsanzahl', sterne:4, tasks:['Gleichung in Normalform bringen','p-q-Formel anwenden','Diskriminante interpretieren','Lösungen prüfen'] },
+      { id:'m9_4', title:'Reelle Zahlen & Wurzeln', sub:'Wurzelgesetze, Irrationalität, Rechenregeln', sterne:3, tasks:['Wurzeln vereinfachen','Rechenregeln für Wurzeln anwenden','Gleichungen mit Wurzeln lösen'] },
+      { id:'m9_5', title:'Ähnlichkeit & Strahlensätze', sub:'Strahlensatz 1 & 2, ähnliche Dreiecke, Maßstäbe', sterne:3, tasks:['Strahlensatz 1 anwenden','Strahlensatz 2 anwenden','Ähnliche Figuren erkennen','Maßstäbe berechnen'] },
+      { id:'m9_6', title:'Trigonometrie', sub:'Sinus, Kosinus, Tangens im rechtwinkligen Dreieck', sterne:4, tasks:['Sinus, Kosinus, Tangens definieren','Seiten im Dreieck berechnen','Winkel berechnen','Anwendungsaufgaben lösen'] },
+      { id:'m9_7', title:'Wahrscheinlichkeitsrechnung', sub:'Laplace, Baumdiagramme, bedingte Wahrscheinlichkeit', sterne:3, tasks:['Laplace-Wahrscheinlichkeit berechnen','Baumdiagramme zeichnen','Bedingte Wahrscheinlichkeit bestimmen','Vierfeldertafel ausfüllen'] },
+      { id:'m9_8', title:'Körper – Oberfläche & Volumen', sub:'Kegel, Zylinder, Pyramide, Kugel', sterne:3, tasks:['Kegelvolumen berechnen','Kugel: Volumen und Oberfläche','Zusammengesetzte Körper berechnen','Anwendungen im Alltag'] },
+    ],
+    englisch: [
+      { id:'e9_1', title:'English as a Global Language', sub:'Globalisierung, Chancen & Risiken, Sprachvielfalt', sterne:3, tasks:['Vokabular Globalisierung aufbauen','Pro-/Contra-Argumentation auf Englisch','Hörverstehen zu Global English'] },
+      { id:'e9_2', title:'USA & Großbritannien', sub:'Gesellschaft, Geschichte, Landeskunde', sterne:3, tasks:['UK vs. USA Unterschiede beschreiben','Historische Ereignisse auf Englisch darstellen','Leseverstehen zu Landeskunde'] },
+      { id:'e9_3', title:'Medien & Social Media', sub:'Chancen, Risiken, Medienkritik auf Englisch', sterne:2, tasks:['Meinung strukturiert äußern (expressing opinion)','Essay-Einleitung schreiben','Social-Media-Texte analysieren'] },
+      { id:'e9_4', title:'Zeitformen – Vertiefung', sub:'Present Perfect vs. Simple Past, Future forms, Passive', sterne:3, tasks:['Present Perfect korrekt einsetzen','will / going to / Present Progressive unterscheiden','Passive voice Grundlagen'] },
+      { id:'e9_5', title:'Schreiben: formell & informell', sub:'Briefe, E-Mails, Register bewusst wählen', sterne:3, tasks:['Formellen Brief verfassen','Informelle E-Mail schreiben','Textstruktur und Konnektoren nutzen'] },
+      { id:'e9_6', title:'Hörverstehen & Sprechen', sub:'Listening strategies, Diskussionen, Sprechprüfung', sterne:2, tasks:['Informationen aus Hörtexten entnehmen','Diskussion auf Englisch führen','Sprechprüfung vorbereiten'] },
+      { id:'e9_7', title:'Textanalyse – Lesen', sub:'Sachtexte, Kurzgeschichten, Zeitungsartikel', sterne:3, tasks:['Hauptaussage identifizieren','Texttyp und Intention erkennen','Kommentar schreiben'] },
+    ],
+    deutsch: [
+      { id:'d9_1', title:'Lineare Erörterung', sub:'These, Argument, Gegenargument, Schluss', sterne:4, tasks:['These klar formulieren','Argumente belegen und gewichten','Gegenargument entkräften','Schluss formulieren'] },
+      { id:'d9_2', title:'Epik – Romane & Novellen', sub:'Textanalyse, Erzählperspektive, Figurencharakterisierung', sterne:3, tasks:['Erzählperspektive bestimmen','Figurencharakterisierung schreiben','Erzählzeit vs. erzählte Zeit unterscheiden'] },
+      { id:'d9_3', title:'Lyrik analysieren', sub:'Reimschema, Metrum, Stilmittel, Interpretation', sterne:3, tasks:['Reimschema und Strophenform bestimmen','Metrum analysieren','Stilmittel benennen und erklären','Gedichtinterpretation verfassen'] },
+      { id:'d9_4', title:'Grammatik & Syntax', sub:'Satzglieder, Nebensatzarten, Kommasetzung', sterne:3, tasks:['Satzglieder bestimmen','Nebensatzarten unterscheiden','Kommasetzung sichern'] },
+      { id:'d9_5', title:'Bewerbungsschreiben', sub:'Lebenslauf, Anschreiben, formelle Sprache', sterne:3, tasks:['Lebenslauf strukturieren','Anschreiben formulieren','Formelles Register einhalten'] },
+      { id:'d9_6', title:'Sachtexte & Medien', sub:'Kommentar, Reportage, Textsortenkenntnis', sterne:2, tasks:['Textsorte erkennen','Intention des Autors analysieren','Eigenen Kommentar schreiben'] },
+      { id:'d9_7', title:'Dramatik', sub:'Szenenanalyse, Dramentheorie, Redeformen', sterne:3, tasks:['Akt-/Szenen-Struktur beschreiben','Dialog und Figurenrede analysieren','Dreieckmodell des Dramas erklären'] },
+    ]
+  },
+  10: {
+    mathe: [
+      { id:'m10_1', title:'Exponentialfunktionen', sub:'f(x)=a·bˣ, Wachstum, Zerfall, Anwendungen', sterne:4, tasks:['Exponentielles Wachstum beschreiben','Graphen von Exponentialfunktionen skizzieren','Anwendungen: Zinseszins, radioaktiver Zerfall','Parameter a und b interpretieren'] },
+      { id:'m10_2', title:'Logarithmus', sub:'Definition, Rechenregeln, logarithmische Gleichungen', sterne:4, tasks:['Logarithmus als Umkehrfunktion erklären','Logarithmusgesetze anwenden','Logarithmische Gleichungen lösen'] },
+      { id:'m10_3', title:'Sinus- & Kosinussatz', sub:'Beliebige Dreiecke, Flächenformel', sterne:4, tasks:['Sinussatz anwenden','Kosinussatz anwenden','Flächenformel ½ab·sin(γ) nutzen','Anwendungsaufgaben lösen'] },
+      { id:'m10_4', title:'Binomialverteilung', sub:'Bernoulli-Ketten, Erwartungswert, Wahrscheinlichkeiten', sterne:4, tasks:['Bernoulli-Experiment definieren','Binomialkoeffizient berechnen','Wahrscheinlichkeiten mit Formel bestimmen','Erwartungswert berechnen'] },
+      { id:'m10_5', title:'Vektoren (Grundlagen)', sub:'Rechnen mit Vektoren, Skalarprodukt', sterne:3, tasks:['Vektoren addieren und skalieren','Skalarprodukt berechnen','Lineare Unabhängigkeit prüfen'] },
+      { id:'m10_6', title:'Kreisgleichung', sub:'Mittelpunkt, Radius, Schnittpunkte', sterne:3, tasks:['Kreisgleichung aufstellen','Mittelpunkt und Radius ablesen','Schnittpunkte Gerade-Kreis berechnen'] },
+      { id:'m10_7', title:'Bruchgleichungen & Polynome', sub:'Definitionsmenge, Polynomdivision, Nullstellen', sterne:4, tasks:['Bruchgleichungen lösen','Definitionsmenge beachten','Polynomdivision durchführen','Nullstellen höherer Polynome berechnen'] },
+      { id:'m10_8', title:'Statistik', sub:'Median, Varianz, Standardabweichung, Boxplot', sterne:3, tasks:['Mittelwert und Median berechnen','Varianz und Standardabweichung ermitteln','Boxplot zeichnen','Daten interpretieren'] },
+    ],
+    englisch: [
+      { id:'e10_1', title:'Gesellschaft & Politik', sub:'Political systems, democracy, current events', sterne:3, tasks:['Political vocabulary sichern','Aktuelle Ereignisse auf Englisch diskutieren','Letter to the editor schreiben'] },
+      { id:'e10_2', title:'Multikulturelle Gesellschaft', sub:'Diversity, identity, migration, prejudice', sterne:3, tasks:['Vokabular zu diversity & identity','Text über Migration analysieren','Präsentation zu kulturellen Themen halten'] },
+      { id:'e10_3', title:'Conditional & Reported Speech', sub:'Konditionalsätze Typ 1–3, indirekte Rede', sterne:4, tasks:['Conditional 1, 2, 3 anwenden','Reported speech üben','Subjunktiv II im Englischen'] },
+      { id:'e10_4', title:'Beruf & Bewerbung', sub:'Job applications, interviews, career English', sterne:3, tasks:['Cover letter auf Englisch schreiben','Bewerbungsgespräch simulieren','Berufsfeld-Vokabular aufbauen'] },
+      { id:'e10_5', title:'Sprachmittlung', sub:'Texte sinngemäß übertragen DE ↔ EN', sterne:4, tasks:['Deutsche Inhalte auf Englisch zusammenfassen','Englische Texte auf Deutsch übertragen','Kontext und Register beachten'] },
+      { id:'e10_6', title:'Literarische Analyse', sub:'Short stories, poems – fortgeschrittene Analyse', sterne:4, tasks:['Stilmittel auf Englisch erkennen','Kurzgeschichte interpretieren','Character analysis verfassen'] },
+      { id:'e10_7', title:'Abschlussvorbereitung', sub:'Alle Kompetenzbereiche: Lesen, Schreiben, Hören', sterne:5, tasks:['Leseverstehen-Strategien anwenden','Formal writing üben','Detailverstehen beim Hören trainieren','Sprachliche Mittel sichern'] },
+    ],
+    deutsch: [
+      { id:'d10_1', title:'Dialektische Erörterung', sub:'These – Antithese – Synthese, Sanduhr-Prinzip', sterne:4, tasks:['Sanduhr-Prinzip anwenden','Argumente gewichten','Synthese formulieren','Übergänge schreiben'] },
+      { id:'d10_2', title:'Textinterpretation Prosa', sub:'Novellen, Kurzgeschichten, Einleitung bis Schluss', sterne:4, tasks:['Einleitung: Textsorte, Autor, Thema','Inhaltsangabe strukturieren','Sprachliche Mittel analysieren','Deutungshypothese formulieren'] },
+      { id:'d10_3', title:'Sprachvarietäten', sub:'Dialekte, Soziolekte, Jugendsprache, Sprachwandel', sterne:2, tasks:['Dialekt vs. Standardsprache vergleichen','Beispiele für Sprachwandel nennen','Sprachvarietäten beschreiben'] },
+      { id:'d10_4', title:'Rhetorik & Argumentation', sub:'Redeanalyse, rhetorische Mittel, eigene Rede', sterne:3, tasks:['Rhetorische Mittel benennen','Eine Rede analysieren','Eigene Rede schreiben und halten'] },
+      { id:'d10_5', title:'Abschlussvorbereitung', sub:'Alle Aufsatzformen: Erörterung, Analyse, Interpretation', sterne:5, tasks:['Erörterung Probeaufsatz schreiben','Gedichtinterpretation wiederholen','Dramenszene analysieren','Textanalyse Sachtext üben'] },
+      { id:'d10_6', title:'Episches Theater', sub:'Brecht, Verfremdungseffekt, modernes Drama', sterne:3, tasks:['Episches vs. dramatisches Theater unterscheiden','Verfremdungseffekt erklären','Szenenanalyse zu Brecht'] },
+      { id:'d10_7', title:'Kommunikationsmodelle', sub:'Schulz von Thun, Werbung, Medienkritik', sterne:3, tasks:['4-Seiten-Modell nach Schulz von Thun erklären','Werbetexte analysieren','Medienkritik formulieren'] },
+    ]
+  }
+};
+
+/* Standalone Aufgaben (per-tab exercises) */
+const AUFGABEN = [
+  { id:'a1', fach:'mathe', title:'Gleichungssystem lösen', desc:'Löse: 2x + y = 7 und x − y = 2 mit dem Additionsverfahren.', schwierigkeit:1, tasks:['Gleichungen aufschreiben','Variablen addieren/subtrahieren','Lösung einsetzen und prüfen','Ergebnis als (x, y) angeben'] },
+  { id:'a2', fach:'mathe', title:'Parabel skizzieren', desc:'Skizziere f(x) = x² − 4x + 3 und bestimme Scheitelpunkt und Nullstellen.', schwierigkeit:2, tasks:['Normalform in Scheitelpunktform umschreiben','Scheitelpunkt ablesen','Nullstellen berechnen','Skizze mit Beschriftung anfertigen'] },
+  { id:'a3', fach:'mathe', title:'Trigonometrie-Aufgabe', desc:'In einem rechtwinkligen Dreieck gilt: a = 5 cm, β = 35°. Berechne Seite b und Hypotenuse c.', schwierigkeit:2, tasks:['Skizze des Dreiecks anfertigen','tan(β) = b/a anwenden','Hypotenuse c über sin oder Pythagoras bestimmen','Ergebnis auf 2 Stellen runden'] },
+  { id:'a4', fach:'mathe', title:'Wahrscheinlichkeit – Münzwurf', desc:'Eine faire Münze wird dreimal geworfen. Wie groß ist P(genau 2× Kopf)?', schwierigkeit:1, tasks:['Baumdiagramm zeichnen','Günstige Ereignisse zählen','Wahrscheinlichkeit berechnen','Ergebnis als Bruch und Dezimalzahl angeben'] },
+  { id:'a5', fach:'englisch', title:'Formal email – practice', desc:'Write a formal email to your school principal requesting a day off for an important family event.', schwierigkeit:2, tasks:['Greeting wählen (Dear Ms/Mr …)','Grund klar und höflich formulieren','Um Bestätigung bitten','Geeigneten Abschluss verwenden'] },
+  { id:'a6', fach:'englisch', title:'Present Perfect vs. Simple Past', desc:'Fill in the correct tense: "I ___ (visit) London twice. Last year I ___ (go) to Paris."', schwierigkeit:1, tasks:['Zeitformen unterscheiden','Signalwörter identifizieren (twice, last year)','Sätze korrekt ausfüllen','2 eigene Beispielsätze bilden'] },
+  { id:'a7', fach:'englisch', title:'Conditional sentences', desc:'Transform: "If I have time, I will call you." → Type 2 & Type 3 conditional.', schwierigkeit:3, tasks:['Conditional Typ 2 bilden','Conditional Typ 3 bilden','Unterschied in Bedeutung erklären','Eigenen Satz in allen drei Typen schreiben'] },
+  { id:'a8', fach:'deutsch', title:'Erörterungseinleitung', desc:'Schreibe eine Einleitung für die Erörterung: "Sollten Smartphones im Unterricht erlaubt sein?"', schwierigkeit:2, tasks:['Thema im ersten Satz benennen','Relevanz begründen','These klar formulieren','Überleitung zum Hauptteil schreiben'] },
+  { id:'a9', fach:'deutsch', title:'Metaphern erkennen', desc:'Analysiere die folgenden Sätze und identifiziere Metaphern, Vergleiche und Personifikationen.', schwierigkeit:1, tasks:['Textstellen markieren','Stilmittel benennen','Wirkung erklären','In 3 Sätzen zusammenfassen'] },
+  { id:'a10', fach:'deutsch', title:'Gedichtanalyse: Romantik', desc:'Analysiere die Stimmung und Sprache in einem Gedicht der Romantik. Nutze Fachbegriffe.', schwierigkeit:3, tasks:['Reimschema und Metrum bestimmen','Zentrale Bilder und Motive benennen','3 Stilmittel analysieren','Stimmung beschreiben und belegen'] },
+  { id:'a11', fach:'mathe', title:'Exponentialfunktion anwenden', desc:'Ein Bakterium verdoppelt sich alle 3 Stunden. Wie viele gibt es nach 12 Stunden (Start: 100)?', schwierigkeit:2, tasks:['Formel aufstellen: f(t) = a·bᵗ','Werte einsetzen','Ergebnis berechnen','Graphen skizzieren'] },
+  { id:'a12', fach:'englisch', title:'Text analysis – short story', desc:'Identify the narrative perspective, main conflict, and climax in a short story of your choice.', schwierigkeit:3, tasks:['Erzählperspektive bestimmen und belegen','Hauptkonflikt in 2 Sätzen beschreiben','Höhepunkt (climax) identifizieren','Character analysis für Hauptfigur'] },
+];
+
+const RANKS = [
+  {min:0,   name:'Anfänger'},
+  {min:5,   name:'Lernender'},
+  {min:15,  name:'Aufsteiger'},
+  {min:30,  name:'Crack'},
+  {min:50,  name:'Diamant'},
+  {min:80,  name:'Legende'},
+  {min:120, name:'Schulflexer'},
+];
+const FACH_COLORS = { mathe:'#007aff', englisch:'#32ade6', deutsch:'#5856d6' };
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════ */
+let state = {
+  done:{}, stars:0, reminderEnabled:false, lastActiveTime:0,
+  doneAufgaben:{}, streak:0, lastStreakDate:''
+};
+let currentUser = null; // { uid, name, email, photo, isGuest }
+let currentKlasse = 9;
+let currentFach = 'mathe';
+let currentThema = null;
+let currentAufgabe = null;
+let checkedTasks = new Set();
+let aufgabenFilter = 'alle';
+let dropdownOpen = false;
+
+/* ═══════════════════════════════════════════════════════
+   STORAGE (Firebase or localStorage fallback)
+   ═══════════════════════════════════════════════════════ */
+function isFirebaseReady() {
+  return window._firebase && window._firebase.db && currentUser && !currentUser.isGuest;
+}
+
+async function loadState() {
+  const local = localStorage.getItem('schulflexer_v3');
+  if (local) {
+    try { state = { ...state, ...JSON.parse(local) }; } catch(e){}
+  }
+  if (isFirebaseReady()) {
+    try {
+      const { db, doc, getDoc } = window._firebase;
+      const ref = doc(db, 'users', currentUser.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        state = { ...state, ...snap.data() };
+        localStorage.setItem('schulflexer_v3', JSON.stringify(state));
+      }
+    } catch(e){ console.warn('Firestore read failed', e); }
+  }
+}
+
+async function saveState() {
+  localStorage.setItem('schulflexer_v3', JSON.stringify(state));
+  if (isFirebaseReady()) {
+    try {
+      const { db, doc, setDoc } = window._firebase;
+      await setDoc(doc(db, 'users', currentUser.uid), state);
+    } catch(e){ console.warn('Firestore write failed', e); }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUTH
+   ═══════════════════════════════════════════════════════ */
+function initAuth() {
+  const fb = window._firebase;
+  if (!fb || !fb.auth) {
+    // Firebase not configured
+    document.getElementById('setup-banner').style.display = 'block';
+    document.getElementById('btnGoogleSignIn').style.opacity = '0.4';
+    document.getElementById('btnGoogleSignIn').style.pointerEvents = 'none';
+    return;
+  }
+  fb.onAuthStateChanged(fb.auth, user => {
+    if (user) {
+      loginUser({ uid:user.uid, name:user.displayName||'Schüler', email:user.email||'', photo:user.photoURL||null, isGuest:false });
+    }
+  });
+}
+
+document.getElementById('btnGoogleSignIn').addEventListener('click', async () => {
+  const fb = window._firebase;
+  if (!fb || !fb.auth) return;
+  try {
+    const provider = new fb.GoogleAuthProvider();
+    const result = await fb.signInWithPopup(fb.auth, provider);
+    const u = result.user;
+    loginUser({ uid:u.uid, name:u.displayName||'Schüler', email:u.email||'', photo:u.photoURL||null, isGuest:false });
+  } catch(e) {
+    showToast('Fehler', e.message || 'Anmeldung fehlgeschlagen', '!');
+  }
+});
+
+document.getElementById('btnGuestLogin').addEventListener('click', () => {
+  loginUser({ uid:'guest', name:'Gast', email:'Lokal gespeichert', photo:null, isGuest:true });
+});
+
+async function loginUser(user) {
+  currentUser = user;
+  await loadState();
+  updateStreak();
+
+  // Show app
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+
+  updateUserUI();
+  renderAll();
+}
+
+function signOutUser() {
+  const fb = window._firebase;
+  if (fb && fb.auth && !currentUser?.isGuest) {
+    fb.signOut(fb.auth).catch(()=>{});
+  }
+  currentUser = null;
+  state = { done:{}, stars:0, reminderEnabled:false, lastActiveTime:0, doneAufgaben:{}, streak:0, lastStreakDate:'' };
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('screen-login').classList.add('active');
+  closeDropdown();
+}
+
+function updateUserUI() {
+  if (!currentUser) return;
+  const initials = currentUser.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase() || '?';
+  // Avatar btn
+  const avatarBtn = document.getElementById('avatarBtn');
+  if (currentUser.photo) {
+    avatarBtn.innerHTML = `<img src="${currentUser.photo}" alt="Avatar">`;
+  } else {
+    avatarBtn.textContent = initials;
+  }
+  // Dropdown
+  document.getElementById('ddName').textContent = currentUser.name;
+  document.getElementById('ddEmail').textContent = currentUser.email;
+  // Profile page
+  const pa = document.getElementById('profileAvatar');
+  if (currentUser.photo) {
+    pa.innerHTML = `<img src="${currentUser.photo}" alt="Avatar">`;
+  } else {
+    pa.textContent = initials;
+  }
+  document.getElementById('profileName').textContent = currentUser.name;
+  document.getElementById('profileEmail').textContent = currentUser.email;
+  // Hero
+  const firstName = currentUser.name.split(' ')[0];
+  document.getElementById('heroName').textContent = firstName;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STREAK
+   ═══════════════════════════════════════════════════════ */
+function updateStreak() {
+  const today = new Date().toDateString();
+  if (state.lastStreakDate === today) return;
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (state.lastStreakDate === yesterday) {
+    state.streak = (state.streak || 0) + 1;
+  } else if (state.lastStreakDate !== today) {
+    state.streak = 1;
+  }
+  state.lastStreakDate = today;
+  saveState();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TAB SWITCHING
+   ═══════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+  closeDropdown();
+  if (tab === 'aufgaben') renderAufgaben();
+  if (tab === 'lernen')   renderThemen();
+  if (tab === 'uebersicht') renderHomeStats();
+  if (tab === 'profil')   renderProfile();
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER ALL
+   ═══════════════════════════════════════════════════════ */
+function renderAll() {
+  updateStarBar();
+  updateProgress();
+  renderHomeStats();
+  renderThemen();
+  renderAufgaben();
+  renderProfile();
+  updateReminderUI();
+}
+
+function renderHomeStats() {
+  const { total, done } = getProgressStats();
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('heroStars').textContent = state.stars;
+  document.getElementById('heroStreak').textContent = state.streak || 0;
+  document.getElementById('heroPct').textContent = pct + '%';
+}
+
+function getProgressStats() {
+  let total = 0, done = 0;
+  for (const k of [9,10]) {
+    const all = CURRICULUM[k];
+    for (const f in all) { all[f].forEach(t => { total++; if (state.done[t.id]) done++; }); }
+  }
+  return {total, done};
+}
+
+function updateStarBar() {
+  document.getElementById('starCount').textContent = state.stars;
+  const rank = [...RANKS].reverse().find(r => state.stars >= r.min) || RANKS[0];
+  document.getElementById('rankPill').textContent = rank.name;
+}
+
+function updateProgress() {
+  const all = CURRICULUM[currentKlasse];
+  let total = 0, done = 0;
+  for (const f in all) { all[f].forEach(t => { total++; if (state.done[t.id]) done++; }); }
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progPct').textContent = pct + ' %';
+  document.getElementById('progLabel').textContent = `Klasse ${currentKlasse} · ${done} / ${total} abgeschlossen`;
+}
+
+function renderProfile() {
+  const { total, done } = getProgressStats();
+  const rank = [...RANKS].reverse().find(r => state.stars >= r.min) || RANKS[0];
+  document.getElementById('statStars').textContent = state.stars;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statRank').textContent = rank.name;
+  const tog = document.getElementById('reminderToggle');
+  tog.classList.toggle('on', !!state.reminderEnabled);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LERNEN
+   ═══════════════════════════════════════════════════════ */
+function setKlasse(k) {
+  currentKlasse = k;
+  document.getElementById('btn9').classList.toggle('active', k===9);
+  document.getElementById('btn10').classList.toggle('active', k===10);
+  updateProgress();
+  renderThemen();
+}
+
+function setFach(f) {
+  currentFach = f;
+  document.querySelectorAll('.fach-pill').forEach(p => p.classList.toggle('active', p.dataset.fach===f));
+  renderThemen();
+}
+
+function renderThemen() {
+  const color = FACH_COLORS[currentFach];
+  const themen = CURRICULUM[currentKlasse][currentFach];
+  const fachNames = {mathe:'Mathematik', englisch:'Englisch', deutsch:'Deutsch'};
+  document.getElementById('themenLabel').textContent = `${fachNames[currentFach]} – Klasse ${currentKlasse}`;
+  document.getElementById('themenList').innerHTML = themen.map(t => {
+    const isDone = !!state.done[t.id];
+    const starsHtml = Array(t.sterne).fill('★').join('');
+    return `
+      <div class="thema-card glass-card${isDone?' done':''}" style="--fach-color:${color}" onclick="openModal('${t.id}','thema')">
+        <div class="thema-card-inner">
+          <div class="thema-row">
+            <div class="thema-title">${t.title}</div>
+            <div class="thema-stars-row">${starsHtml}</div>
+          </div>
+          <div class="thema-sub">${t.sub}</div>
+          <div class="thema-footer">
+            <button class="solve-btn" style="background:${color}" ${isDone?'disabled':''}>Aufgaben lösen</button>
+            <div class="done-label">✓ Abgeschlossen · +${t.sterne} Punkte</div>
+            <div class="thema-points">${isDone ? '+'+t.sterne+' Punkte' : t.sterne+' Punkte möglich'}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUFGABEN
+   ═══════════════════════════════════════════════════════ */
+function setAufgabenFilter(f) {
+  aufgabenFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+  renderAufgaben();
+}
+
+function renderAufgaben() {
+  let list = AUFGABEN;
+  if (aufgabenFilter !== 'alle' && aufgabenFilter !== 'offen') {
+    list = list.filter(a => a.fach === aufgabenFilter);
+  }
+  if (aufgabenFilter === 'offen') {
+    list = list.filter(a => !state.doneAufgaben[a.id]);
+  }
+
+  if (list.length === 0) {
+    document.getElementById('aufgabenList').innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎉</div>
+      <div style="font-size:0.95rem;font-weight:600">Alle Aufgaben gelöst!</div>
+      <div style="font-size:0.8rem;margin-top:6px">Schau morgen wieder rein.</div>
+    </div>`;
+    return;
+  }
+
+  document.getElementById('aufgabenList').innerHTML = list.map(a => {
+    const isDone = !!state.doneAufgaben[a.id];
+    const dots = [1,2,3].map(d => `<div class="diff-dot${d<=a.schwierigkeit?' filled':''}"></div>`).join('');
+    const schwierigkeitLabel = ['','Leicht','Mittel','Schwer'][a.schwierigkeit] || '';
+    return `
+      <div class="aufgabe-card glass-card" onclick="openModal('${a.id}','aufgabe')">
+        ${isDone ? '<div class="aufgabe-done-overlay"></div>' : ''}
+        <div class="aufgabe-header-row">
+          <div class="aufgabe-title">${a.title}</div>
+          <span class="aufgabe-badge badge-${a.fach}">${{mathe:'Mathe',englisch:'Englisch',deutsch:'Deutsch'}[a.fach]}</span>
+        </div>
+        <div class="aufgabe-desc">${a.desc}</div>
+        <div class="aufgabe-footer">
+          <div class="aufgabe-difficulty">
+            ${dots} <span style="margin-left:4px">${schwierigkeitLabel}</span>
+          </div>
+          ${isDone
+            ? '<div class="aufgabe-done-badge">✓ Gelöst</div>'
+            : `<button class="aufgabe-start-btn" onclick="event.stopPropagation();openModal('${a.id}','aufgabe')">Starten →</button>`
+          }
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════ */
+function openModal(id, type) {
+  let item, isDone;
+  if (type === 'thema') {
+    item = CURRICULUM[currentKlasse][currentFach].find(t => t.id === id);
+    isDone = !!state.done[id];
+    if (!item || isDone) return;
+    currentThema = item;
+    currentAufgabe = null;
+  } else {
+    item = AUFGABEN.find(a => a.id === id);
+    isDone = !!state.doneAufgaben[id];
+    if (!item || isDone) return;
+    currentAufgabe = item;
+    currentThema = null;
+  }
+
+  checkedTasks = new Set();
+
+  const fachName = {mathe:'Mathematik',englisch:'Englisch',deutsch:'Deutsch'}[item.fach || currentFach];
+  const fachColor = FACH_COLORS[item.fach || currentFach];
+  const badge = document.getElementById('modalFachBadge');
+  badge.textContent = fachName;
+  badge.style.background = fachColor + '22';
+  badge.style.color = fachColor;
+
+  document.getElementById('modalTitle').textContent = item.title;
+  document.getElementById('modalDesc').textContent =
+    type === 'thema'
+      ? `Hak alle Punkte ab, die du verstanden hast. Bei 100 % gibt es ${item.sterne} Sterne.`
+      : `Löse die Aufgabe Schritt für Schritt. Hake jeden Schritt ab, wenn du ihn abgeschlossen hast.`;
+
+  document.getElementById('modalTasks').innerHTML = item.tasks.map((task, i) => `
+    <div class="task-item" onclick="toggleTask(${i}, this)">
+      <div class="task-cb">
+        <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+          <path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="task-text">${task}</div>
+    </div>`).join('');
+
+  updateModalProgress(item.tasks.length);
+  document.getElementById('btnConfirm').classList.remove('ready');
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function toggleTask(i, el) {
+  const item = currentThema || currentAufgabe;
+  if (!item) return;
+  if (checkedTasks.has(i)) { checkedTasks.delete(i); el.classList.remove('checked'); }
+  else { checkedTasks.add(i); el.classList.add('checked'); }
+  updateModalProgress(item.tasks.length);
+  document.getElementById('btnConfirm').classList.toggle('ready', checkedTasks.size >= item.tasks.length);
+}
+
+function updateModalProgress(total) {
+  const pct = total ? Math.round(checkedTasks.size / total * 100) : 0;
+  document.getElementById('modalProgFill').style.width = pct + '%';
+  document.getElementById('modalProgLabel').textContent = checkedTasks.size + ' / ' + total;
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  currentThema = null;
+  currentAufgabe = null;
+}
+
+function confirmDone() {
+  if (currentThema) {
+    state.done[currentThema.id] = true;
+    state.stars += currentThema.sterne;
+    state.lastActiveTime = Date.now();
+    const modal = document.querySelector('.modal');
+    const rect = modal.getBoundingClientRect();
+    burstAt(rect.left + rect.width/2, rect.top + rect.height/2);
+    closeModal();
+    saveState();
+    renderAll();
+    showToast('★ ' + currentThema.sterne + ' Sterne verdient', currentThema.title + ' abgeschlossen');
+  } else if (currentAufgabe) {
+    state.doneAufgaben[currentAufgabe.id] = true;
+    state.stars += 2;
+    state.lastActiveTime = Date.now();
+    const modal = document.querySelector('.modal');
+    const rect = modal.getBoundingClientRect();
+    burstAt(rect.left + rect.width/2, rect.top + rect.height/2);
+    closeModal();
+    saveState();
+    renderAll();
+    showToast('✓ Aufgabe gelöst! +2 Sterne', currentAufgabe.title);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   REMINDER
+   ═══════════════════════════════════════════════════════ */
+function updateReminderUI() {
+  const tog = document.getElementById('reminderToggle');
+  if (tog) tog.classList.toggle('on', !!state.reminderEnabled);
+  const sub = document.getElementById('reminderQuickSub');
+  if (sub) sub.textContent = state.reminderEnabled ? 'Aktiv 🔔' : 'Aktivieren';
+}
+
+async function requestReminder() {
+  if (!('Notification' in window)) { showToast('Nicht verfügbar', 'Benachrichtigungen werden nicht unterstützt.', '!'); return; }
+  let perm = Notification.permission;
+  if (perm === 'default') perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    state.reminderEnabled = true;
+    saveState();
+    updateReminderUI();
+    showToast('Erinnerung aktiviert', 'Du wirst einmal pro Woche erinnert. 🔔');
+    setTimeout(() => {
+      new Notification('SchulFlexer', { body: 'Erinnerungen aktiv – jeden Dienstag um 18 Uhr!' });
+    }, 1500);
+  } else {
+    showToast('Zugriff verweigert', 'Benachrichtigungen wurden nicht erlaubt.', '!');
+  }
+}
+
+function resetProgress() {
+  if (!confirm('Fortschritt wirklich zurücksetzen? Das kann nicht rückgängig gemacht werden.')) return;
+  state = { done:{}, stars:0, reminderEnabled:false, lastActiveTime:0, doneAufgaben:{}, streak:0, lastStreakDate:'' };
+  saveState();
+  renderAll();
+  showToast('Zurückgesetzt', 'Dein Fortschritt wurde gelöscht.', '!');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DROPDOWN
+   ═══════════════════════════════════════════════════════ */
+document.getElementById('avatarBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  dropdownOpen = !dropdownOpen;
+  document.getElementById('userDropdown').classList.toggle('show', dropdownOpen);
+});
+document.addEventListener('click', () => closeDropdown());
+function closeDropdown() {
+  dropdownOpen = false;
+  document.getElementById('userDropdown').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════ */
+let toastTimer = null;
+function showToast(title, msg, icon='★') {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3800);
+}
+
+/* ═══════════════════════════════════════════════════════
+   BURST
+   ═══════════════════════════════════════════════════════ */
+function burstAt(cx, cy) {
+  const wrap = document.createElement('div');
+  wrap.className = 'burst-container';
+  document.body.appendChild(wrap);
+  const cols = ['#007aff','#5856d6','#32ade6','#34c759','#ff9f0a','#ff3b30'];
+  for (let i = 0; i < 24; i++) {
+    const el = document.createElement('div');
+    el.className = 'burst-dot';
+    const angle = (i/24)*Math.PI*2;
+    const dist = 60 + Math.random()*120;
+    el.style.cssText = `left:${cx}px;top:${cy}px;--col:${cols[i%cols.length]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;--d:${0.5+Math.random()*0.4}s;animation-delay:${Math.random()*0.08}s`;
+    wrap.appendChild(el);
+  }
+  setTimeout(() => wrap.remove(), 1000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL CLOSE ON OUTSIDE CLICK
+   ═══════════════════════════════════════════════════════ */
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════ */
+initAuth();
+</script>
+</body>
+</html>
